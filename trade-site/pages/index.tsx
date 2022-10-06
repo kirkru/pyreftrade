@@ -6,7 +6,7 @@ import TaskItem from "../components/taskItem";
 import { v4 as uuidv4 } from "uuid";
 
 const Home: NextPage = () => {
-  const todoApiEndpoint: string =
+  const tradeApiEndpoint: string =
     "https://67mtb3ab2k2rxf4o3xohyy7mfu0cfjho.lambda-url.ap-southeast-2.on.aws";
   const userId: string = "pixegami";
   const [isLoading, setIsLoading] = React.useState(true);
@@ -15,7 +15,7 @@ const Home: NextPage = () => {
 
   const getTasks = async () => {
     setIsLoading(true);
-    const response = await fetch(`${todoApiEndpoint}/list-tasks/${userId}`);
+    const response = await fetch(`${tradeApiEndpoint}/list-tasks/${userId}`);
     const responseData = await response.json();
 
     // Convert raw JSON to tasks.
@@ -34,7 +34,7 @@ const Home: NextPage = () => {
     // Put a local copy of this task into the state first for immediate feedback.
     setTasks([task, ...tasks]);
 
-    const response = await fetch(`${todoApiEndpoint}/create-task`, {
+    const response = await fetch(`${tradeApiEndpoint}/create-task`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -54,14 +54,14 @@ const Home: NextPage = () => {
     setTasks(newTasks);
 
     // Delete task from table.
-    const response = await fetch(`${todoApiEndpoint}/delete-task/${taskId}`, {
+    const response = await fetch(`${tradeApiEndpoint}/delete-task/${taskId}`, {
       method: "DELETE",
     });
     console.log(response);
   };
 
   const updateTask = async (updatedTask: Task) => {
-    const response = await fetch(`${todoApiEndpoint}/update-task`, {
+    const response = await fetch(`${tradeApiEndpoint}/update-task`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

@@ -1,4 +1,19 @@
-# To-do List API: A FastAPI CRUD App
+# References
+
+https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithItemCollections.html
+
+https://stackoverflow.com/questions/26033239/list-of-objects-to-json-with-python
+
+https://www.geeksforgeeks.org/convert-class-object-to-json-in-python/
+
+https://ysk24ok.github.io/2021/09/02/difference_between_def_and_async_def_in_fastapi.html
+
+Batch writes
+https://stackoverflow.com/questions/60267884/how-to-insert-list-of-objects-in-1-write-to-dynamodb-using-python
+
+https://medium.com/skyline-ai/dynamodb-insert-performance-basics-in-python-boto3-5bc01919c79f
+
+# Reference Trading Demo API
 
 This project is a full-stack CRUD app (a trade-list) with a Python FastAPI backend and a
 NextJS frontend. It is hosted on serverless AWS infrastructure (using Lambda and DynamoDB).

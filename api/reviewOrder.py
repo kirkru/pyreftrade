@@ -55,24 +55,24 @@ class OrderItem(BaseModel):
     symbolId: str
     symbolName: str
 
-    @staticmethod
-    def from_dict(obj: Any) -> 'OrderItem':
-        _quantity = int(obj.get("quantity"))
-        _price = int(obj.get("price"))
-        _symbolId = str(obj.get("symbolId"))
-        _symbolName = str(obj.get("symbolName"))
-        return OrderItem(_quantity, _price, _symbolId, _symbolName)
+    # @staticmethod
+    # def from_dict(obj: Any) -> 'OrderItem':
+    #     _quantity = int(obj.get("quantity"))
+    #     _price = int(obj.get("price"))
+    #     _symbolId = str(obj.get("symbolId"))
+    #     _symbolName = str(obj.get("symbolName"))
+    #     return OrderItem(_quantity, _price, _symbolId, _symbolName)
 
 # @dataclass
 class ReviewOrderRequest(BaseModel):
     userName: str
     orderItems: List[OrderItem]
 
-    @staticmethod
-    def from_dict(obj: Any) -> 'ReviewOrderRequest':
-        _userName = str(obj.get("userName"))
-        _orderItems = [OrderItem.from_dict(y) for y in obj.get("orderItems")]
-        return ReviewOrderRequest(_userName, _orderItems)
+    # @staticmethod
+    # def from_dict(obj: Any) -> 'ReviewOrderRequest':
+    #     _userName = str(obj.get("userName"))
+    #     _orderItems = [OrderItem.from_dict(y) for y in obj.get("orderItems")]
+    #     return ReviewOrderRequest(_userName, _orderItems)
 
 
 @app.get("/")
@@ -81,6 +81,9 @@ async def root():
 
 @app.put("/create-reviewOrder")
 async def create_reviewOrder(reviewOrderRequest: ReviewOrderRequest):
+
+    # Create the reviewOrder for the user
+
     createdTime = int(time.time())
     print(reviewOrderRequest)
     print(type(reviewOrderRequest))
@@ -92,9 +95,22 @@ async def create_reviewOrder(reviewOrderRequest: ReviewOrderRequest):
 
 
     item = {
-        "userName": reviewOrderRequest.userName,
+        "userName": reviewOrderRequest.userName.lower(),
         "createdTime": createdTime,
-        "orderItems": json.dumps(reviewOrderRequest.orderItems.__dict__),
+        "orderItems": json.dumps([ob.__dict__ for ob in reviewOrderRequest.orderItems]),
+        
+        # json.dumps([ob.__dict__ for ob in list_name])
+        # "orderItems": reviewOrderRequest.orderItems,
+
+        # "orderItems": reviewOrderRequest.orderItems.__dict__,
+        # AttributeError: 'list' object has no attribute '__dict__'
+
+        # "orderItems": json.dumps(reviewOrderRequest.orderItems.__dict__),
+        # AttributeError: 'list' object has no attribute '__dict__'
+
+        # "orderItems": json.dumps(reviewOrderRequest.orderItems),
+        # TypeError: Object of type OrderItem is not JSON serializable
+        
         # "orderItems": reviewOrderRequestItem,
     }
 
@@ -102,6 +118,40 @@ async def create_reviewOrder(reviewOrderRequest: ReviewOrderRequest):
     table = _get_table()
     table.put_item(Item=item)
     return {"order": item}
+
+@app.get("/get-reviewOrder/{userName}")
+async def get_reviewOrder(userName: str):
+    # Get the reviewOrder from the table for userName.
+    table = _get_table()
+    response = table.get_item(Key={"userName": userName.lower()})
+    item = response.get("Item")
+    if not item:
+        raise HTTPException(status_code=404, detail=f"ReviewOrder for User: {userName} not found")
+    return item
+
+@app.delete("/delete-reviewOrder/{userName}")
+async def delete_reviewOrder(userName: str):
+    # Delete the reviewOrder for the user from the table.
+    table = _get_table()
+
+    try:
+      # response = table.delete_item(Key={"userName": userName})
+      # Delete only if item found for user using ConditionalExpression
+      response = table.delete_item(Key={"userName": userName}, ConditionExpression="attribute_exists(userName)")
+      print (response)
+      print (type(response))
+    except:
+      print ("An exception occured")
+      raise HTTPException(status_code=404, detail=f"ReviewOrder for User: {userName} not found")
+
+    return {"deleted_userName_reviewOrder": userName}
+
+    # // POST /reviewOrder/send +
+
+@app.post("sendOrder")
+async def sendOrder():
+  return {"Success":"Sent order to the event bus"}
+  pass
 
 def _get_table():
     table_name = os.environ.get("REVIEWORDER_TABLE_NAME")

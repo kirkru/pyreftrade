@@ -7,14 +7,17 @@ set -eux pipefail
 rm -rf *.zip
 
 pip install -t lib -r requirements.txt
-(cd lib; zip ../symbol_lambda.zip -r .)
-zip symbol_lambda.zip -u symbol.py
+(cd lib; zip ../instrument_lambda.zip -r .)
+zip instrument_lambda.zip -u instrument.py
+
+(cd lib; zip ../userAccounts_lambda.zip -r .)
+zip userAccounts_lambda.zip -u userAccounts.py
 
 (cd lib; zip ../reviewOrder_lambda.zip -r .)
 zip reviewOrder_lambda.zip -u reviewOrder.py
 
-(cd lib; zip ../ordering_lambda.zip -r .)
-zip ordering_lambda.zip -u ordering.py
+(cd lib; zip ../trading_lambda.zip -r .)
+zip trading_lambda.zip -u trading.py
 
 # Clean up
 rm -rf lib

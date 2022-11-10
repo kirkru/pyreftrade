@@ -4,11 +4,11 @@
 set -eux pipefail
 
 # Clean previous zip
-rm -rf ordering_lambda.zip
+rm -rf userAccounts_lambda.zip
 
 pip install -t lib -r requirements.txt
-(cd lib; zip ../ordering_lambda.zip -r .)
-zip ordering_lambda.zip -u ordering.py
+(cd lib; zip ../userAccounts_lambda.zip -r .)
+zip userAccounts_lambda.zip -u userAccounts.py
 
 # Clean up
 rm -rf lib

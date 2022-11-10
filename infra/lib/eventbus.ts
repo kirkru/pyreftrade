@@ -22,7 +22,7 @@ export class VGTEventBus extends Construct {
         const sendOrderRule = new Rule(this, 'tr_SendOrderRule', {
             eventBus: bus,
             enabled: true,
-            description: 'When ReviewOrder microservice sends the order',
+            description: 'When ReviewOrder microservice sends the trade',
             eventPattern: {
                 source: ['com.vgt.reviewOrder.sendOrder'],
                 detailType: ['tr_SendOrder']
@@ -33,7 +33,7 @@ export class VGTEventBus extends Construct {
         // // need to pass target to Ordering Lambda service
         // sendOrderRule.addTarget(new LambdaFunction(props.targetFuntion)); 
 
-        // need to pass target to order queue 
+        // need to pass target to trade queue 
         sendOrderRule.addTarget(new SqsQueue(props.targetQueue));
         
         // Grant permission for the reviewOrderApi to publish to this event bus

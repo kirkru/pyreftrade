@@ -1,3 +1,30 @@
+# TODO
+## Infra
+- Cloudfront
+- WAF
+- Custom domain
+- ACM Cert
+- Lambda layers
+
+## API
+- Complete Accounts API
+- Auth piece
+    - Custom Authorizer
+    - JWT set up
+- Lambda layers
+- API Docs export
+- DynamoDB Transactions
+
+# UI
+- UI work
+- Auth0 Integration
+
+# MR 
+- Patterns
+
+# Other
+- Update JIRA with stories and acceptance criteria for each
+
 # References
 
 https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithItemCollections.html

@@ -1,14 +1,10 @@
-from collections import _OrderedDictItemsView
 import os
-from queue import Empty
-import time
-import traceback
-from unicodedata import decimal
-from urllib.request import Request
+# from unicodedata import decimal
+# from urllib.request import Request
 import boto3
 from typing import Optional
 from uuid import uuid4
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from mangum import Mangum
 from pydantic import BaseModel
 from boto3.dynamodb.conditions import Key
@@ -16,9 +12,10 @@ from dataclasses import dataclass
 from typing import List
 from typing import Any
 import json
-import decimal
 from decimal import Decimal
 from datetime import datetime, timezone
+import uuid
+
 # import traceback
 # from bunch import bunchify
 
@@ -26,25 +23,30 @@ app = FastAPI()
 handler = Mangum(app)
 
 # TODO
+# datamodel finalize
+# add accountId sort key, may be?
+# get review order by ID?
+
 # price float
 # Create Datamodel for SendOrderEvent
 
 '''
 {
   "userName": "kir",
+  "accountId": "acc123",
   "totalPrice": 0.0,
   "orderItems": [
     {
       "quantity": 2,
       "price": 140,
-      "symbolId": "AAPL",
-      "symbolName": "Apple Inc."
+      "instrumentId": "AAPL",
+      "instrumentName": "Apple Inc."
     },
     {
       "quantity": 1,
       "price": 90,
-      "symbolId": "XOM",
-      "symbolName": "Exxon Mobil Inc."
+      "instrumentId": "XOM",
+      "instrumentName": "Exxon Mobil Inc."
     }
   ]
 }
@@ -69,24 +71,25 @@ class DecimalEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 class OrderItem(BaseModel):
-    quantity: int
-    price: int
-    symbolId: str
-    symbolName: str
+    quantity: float
+    price: float
+    instrumentId: str
+    instrumentName: str
 
     @staticmethod
     def from_dict(obj: Any) -> 'OrderItem':
         # obj = ast.literal_eval(obj)
         print("Object passed: ", obj)
         obj = eval(obj)
-        _quantity = int(obj.get("quantity"))
-        _price = int(obj.get("price"))
-        _symbolId = str(obj.get("symbolId"))
-        _symbolName = str(obj.get("symbolName"))
-        return OrderItem(_quantity, _price, _symbolId, _symbolName)
+        _quantity = float(obj.get("quantity"))
+        _price = float(obj.get("price"))
+        _instrumentId = str(obj.get("instrumentId"))
+        _instrumentName = str(obj.get("instrumentName"))
+        return OrderItem(_quantity, _price, _instrumentId, _instrumentName)
 
 class ReviewOrderRequest(BaseModel):
     userName: str
+    accountId: str
     totalPrice: Optional[float] = 0.0
     orderItems: List[OrderItem]
 
@@ -94,21 +97,24 @@ class ReviewOrderRequest(BaseModel):
     def from_dict(obj: Any) -> 'ReviewOrderRequest':
         print("Inside from dict")
         _userName = str(obj.get("userName"))
-        print(_userName)
+        _accountId = str(obj.get("accountId"))
+
+        print(_userName, _accountId)
         _totalPrice = float(obj.get("totalPrice"))
         _orderItems = [OrderItem.from_dict(y) for y in obj.get("orderItems")]
         print(_orderItems)
-        return ReviewOrderRequest(_userName, _orderItems)
+        return ReviewOrderRequest(_userName, _orderItems, _totalPrice, _accountId)
 
 @app.get("/")
-async def root(request: Request):
-  print(request)
-  print(request.query_params)
+async def root():
+  # print(request)
+  # print(request.query_params)
   return {"message": "Hello from ReviewOrder API!"}
 
 @app.put("/create-reviewOrder")
 async def create_reviewOrder(reviewOrderRequest: ReviewOrderRequest):
 # async def create_reviewOrder(reviewOrderRequest):
+  try:
 
     # Create the reviewOrder for the user
 
@@ -121,17 +127,23 @@ async def create_reviewOrder(reviewOrderRequest: ReviewOrderRequest):
     
     # item = marshal_object(reviewOrderRequest)
     item = {
+        "reviewOrderId": str(uuid.uuid4()),
         "userName": reviewOrderRequest.userName.lower(),
+        "accountId": reviewOrderRequest.accountId,
         "reviewOrderTime": reviewOrderTime,
         "totalPrice": Decimal(str(reviewOrderRequest.totalPrice)),
-        "orderItems": [ob.__dict__ for ob in reviewOrderRequest.orderItems],
+        "orderItems": json.loads(json.dumps([ob.__dict__ for ob in reviewOrderRequest.orderItems]), parse_float=Decimal),
         # "orderItems": json.dumps([ob.__dict__ for ob in reviewOrderRequest.orderItems]),
     }
 
-    # Put it into the table.
+    # Put item into the table.
     table = _get_table()
     table.put_item(Item=item)
-    return {"order": item}
+    return {"reviewOrder": item}
+
+  except Exception as e:
+    print("Exception occured:", e)
+    return {"Exception occured": str(e) }
 
 @app.get("/get-reviewOrder/{userName}")
 async def get_reviewOrder(userName: str):
@@ -168,7 +180,7 @@ async def sendOrder(userName: str):
 
   reviewOrder = await get_reviewOrder(userName)
 
-  print("Review Order: {}", reviewOrder)
+  print("Review Order: ", reviewOrder)
 
   print("2 - create an event json object with reviewOrder items")
 
@@ -182,6 +194,9 @@ async def sendOrder(userName: str):
 
   print("3 - publish an event to EventBridge")
   publishedEvent = await publishSendOrderEvent(orderPayload)
+
+  # TODO - upon successfully publishing, delete reviewOrder
+  # TODO - update delete reviewOrder with accountID
 
   print("4 - remove existing reviewOrder")
   await delete_reviewOrder(userName)
@@ -201,6 +216,10 @@ def prepareOrderPayload(reviewOrder):
       totalPrice = totalPrice + (orderItem.quantity * orderItem.price)
 
     print(totalPrice)
+
+    totalPriceDict = {'totalPrice': totalPrice}
+    reviewOrder.update(totalPriceDict)
+
     setattr(objReviewOrder, "totalPrice" , totalPrice)
 
     # reviewOrder.totalPrice = totalPrice
@@ -209,7 +228,8 @@ def prepareOrderPayload(reviewOrder):
 
     # orderPayload.__dict__ = reviewOrder.__dict__.copy() 
     # return reviewOrder, totalPrice
-    return objReviewOrder
+    # return objReviewOrder.__dict__
+    return reviewOrder
 
   except Exception as e:
       print ("An exception occured")
@@ -241,15 +261,19 @@ def prepareOrderPayload(reviewOrder):
 
 async def publishSendOrderEvent(orderPayload):
   print("Publishing the sendOrder event with: ", orderPayload)
-  dictOrderPayload = orderPayload.__dict__
+  # dictOrderPayload = orderPayload.__dict__
   try:
+    print("Before params")
+
     eventBusParams = {
                 'Source':os.environ.get("EVENT_SOURCE"),
                 'DetailType':os.environ.get("EVENT_DETAILTYPE"),
-                'Detail':json.dumps(dictOrderPayload, indent=4, cls=DecimalEncoder),
+                'Detail':json.dumps(orderPayload, indent=4, cls=DecimalEncoder),
                 # 'Detail':json.dumps(orderPayload),
                 'EventBusName':os.environ.get("EVENT_BUSNAME")
             }
+
+    print("After params")
 
     client = boto3.client('events')
 

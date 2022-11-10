@@ -207,11 +207,11 @@ export class VGTApiGateway extends Construct {
 
     private createOrderApi(orderingMicroservices: IFunction, stage: string) {
         // Ordering microservices api gateway
-        // root name = order
+        // root name = trade
 
-        // GET /order
-	    // GET /order/{userName}
-        // expected request : xxx/order/vgt?orderDate=timestamp
+        // GET /trade
+	    // GET /trade/{userName}
+        // expected request : xxx/trade/vgt?orderDate=timestamp
         // ordering ms grap input and query parameters and filter to dynamo db
 
         const apigw = new LambdaRestApi(this, 'orderApi', {
@@ -224,12 +224,12 @@ export class VGTApiGateway extends Construct {
             }
         });
     
-        const order = apigw.root.addResource('order');
-        order.addMethod('GET');  // GET /order        
+        const trade = apigw.root.addResource('trade');
+        trade.addMethod('GET');  // GET /trade        
     
-        const singleOrder = order.addResource('{userName}');
-        singleOrder.addMethod('GET');  // GET /order/{userName}
-            // expected request : xxx/order/vgt?orderDate=timestamp
+        const singleOrder = trade.addResource('{userName}');
+        singleOrder.addMethod('GET');  // GET /trade/{userName}
+            // expected request : xxx/trade/vgt?orderDate=timestamp
             // ordering ms grap input and query parameters and filter to dynamo db
     
         return singleOrder;

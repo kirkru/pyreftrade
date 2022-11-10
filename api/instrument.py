@@ -14,13 +14,13 @@ handler = Mangum(app)
 
 # TODO
 # get sectors - added a global secondary index
-# support /update_symbol
+# support /update_instrument
 
 # DONE
 # Create Datamodel
 # update signatures, implementations of methods
 # support lower case sector, ticker
-# get symbols by sector
+# get instruments by sector
 
 
 '''
@@ -42,7 +42,7 @@ Request sample
 }
 '''
 
-class SymbolRequest(BaseModel):
+class InstrumentRequest(BaseModel):
     ticker: str
     company: Optional[str]
     sector: Optional[str]
@@ -53,42 +53,42 @@ class SymbolRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "Hello from Symbol API!"}
+    return {"message": "Hello from Instrument API!"}
 
 
-@app.put("/create-symbol")
-async def create_symbol(symbolRequest: SymbolRequest):
+@app.put("/create-instrument")
+async def create_instrument(instrumentRequest: InstrumentRequest):
     created_time = int(time.time())
     item = {
-        "ticker": symbolRequest.ticker.lower(),
+        "ticker": instrumentRequest.ticker.lower(),
         "created_time": created_time,
-        "company": symbolRequest.company,
-        "sector": symbolRequest.sector.lower(),
-        "description": symbolRequest.description,
-        # "current_price": symbolRequest.current_price,
-        "type": symbolRequest.type
+        "company": instrumentRequest.company,
+        "sector": instrumentRequest.sector.lower(),
+        "description": instrumentRequest.description,
+        # "current_price": instrumentRequest.current_price,
+        "type": instrumentRequest.type
         # "ttl": int(created_time + 86400),  # Expire after 24 hours.
     }
 
     # Put it into the table.
     table = _get_table()
     table.put_item(Item=item)
-    return {"symbol": item}
+    return {"instrument": item}
 
-@app.get("/get-symbol/{ticker}")
-async def get_symbol(ticker: str):
-    # Get the symbol from the table.
+@app.get("/get-instrument/{ticker}")
+async def get_instrument(ticker: str):
+    # Get the instrument from the table.
     table = _get_table()
     response = table.get_item(Key={"ticker": ticker.lower()})
     item = response.get("Item")
     if not item:
-        raise HTTPException(status_code=404, detail=f"Symbol {ticker} not found")
+        raise HTTPException(status_code=404, detail=f"Instrument {ticker} not found")
     return item
 
 
-@app.get("/get-symbols-in-sector/{sector}")
-async def get_symbols_in_sector(sector: str):
-    # List the top N symbols from the table, using the sector index.
+@app.get("/get-instruments-in-sector/{sector}")
+async def get_instruments_in_sector(sector: str):
+    # List the top N instruments from the table, using the sector index.
     table = _get_table()
     response = table.query(
         IndexName="sector-index",
@@ -96,8 +96,8 @@ async def get_symbols_in_sector(sector: str):
         ScanIndexForward=False,
         Limit=10,
     )
-    symbols = response.get("Items")
-    return {"symbols": symbols}
+    instruments = response.get("Items")
+    return {"instruments": instruments}
 
 @app.get("/get-sectors")
 async def get_sectors():
@@ -111,10 +111,10 @@ async def get_sectors():
         # Limit=10,
     )
     sectors = response.get("Items")
-    return {"symbols": sectors}
+    return {"sectors": sectors}
 
-@app.get("/list-symbols")
-async def list_symbols():
+@app.get("/list-instruments")
+async def list_instruments():
     # List the sectors from the table, using the sector index.
     table = _get_table()
     response = table.scan(
@@ -124,8 +124,8 @@ async def list_symbols():
         # ScanIndexForward=False,
         # Limit=10,
     )
-    symbols = response.get("Items")
-    return {"symbols": symbols}
+    instruments = response.get("Items")
+    return {"instruments": instruments}
 
 # @app.put("/update-symbol")
 # async def update_symbol(symbolRequest: SymbolRequest):
@@ -144,14 +144,14 @@ async def list_symbols():
 #     return {"updated_ticker": symbolRequest.ticker}
 
 
-@app.delete("/delete-symbol/{ticker}")
-async def delete_symbol(ticker: str):
-    # Delete the symbol from the table.
+@app.delete("/delete-instrument/{ticker}")
+async def delete_instrument(ticker: str):
+    # Delete the instrument from the table.
     table = _get_table()
     table.delete_item(Key={"ticker": ticker})
-    return {"deleted_ticker": ticker}
+    return {"deleted_instrument": ticker}
 
 
 def _get_table():
-    table_name = os.environ.get("SYMBOL_TABLE_NAME")
+    table_name = os.environ.get("INSTRUMENT_TABLE_NAME")
     return boto3.resource("dynamodb").Table(table_name)

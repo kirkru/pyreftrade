@@ -4,24 +4,24 @@ import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 
-interface VGTQueueProps {
+interface TQueueProps {
     consumer: IFunction;
 }
 
-export class VGTQueue extends Construct {
+export class TQueue extends Construct {
 
-    public readonly orderQueue: IQueue;
+    public readonly tradeQueue: IQueue;
 
-    constructor(scope: Construct, id: string, props: VGTQueueProps) {
+    constructor(scope: Construct, id: string, props: TQueueProps) {
         super(scope, id);
 
       //queue
-      this.orderQueue = new Queue(this, 'tr_OrderQueue', {
-        queueName : 'tr_OrderQueue',
-        visibilityTimeout: Duration.seconds(30) // default value
+      this.tradeQueue = new Queue(this, 'tr_TradeQueue', {
+        queueName : 'tr_TradeQueue',
+        visibilityTimeout: Duration.seconds(5) // default value = 5 secs
       });
       
-      props.consumer.addEventSource(new SqsEventSource(this.orderQueue, {
+      props.consumer.addEventSource(new SqsEventSource(this.tradeQueue, {
           batchSize: 1
       }));
     }

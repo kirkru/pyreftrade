@@ -13,6 +13,10 @@ https://stackoverflow.com/questions/60267884/how-to-insert-list-of-objects-in-1-
 
 https://medium.com/skyline-ai/dynamodb-insert-performance-basics-in-python-boto3-5bc01919c79f
 
+
+https://www.deadbear.io/serverless-fastapi-ci-cd-with-circleci/
+https://www.deadbear.io/simple-serverless-fastapi-with-aws-lambda/
+
 # Reference Trading Demo API
 
 This project is a full-stack CRUD app (a trade-list) with a Python FastAPI backend and a

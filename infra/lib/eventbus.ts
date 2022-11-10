@@ -4,27 +4,27 @@ import { IFunction } from "aws-cdk-lib/aws-lambda";
 import { IQueue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 
-interface TEventBusProps {
+interface VGTEventBusProps {
     publisherFuntion: IFunction;
     targetQueue: IQueue;
 }
 
-export class TEventBus extends Construct {
+export class VGTEventBus extends Construct {
 
-    constructor(scope: Construct, id: string, props: TEventBusProps) {
+    constructor(scope: Construct, id: string, props: VGTEventBusProps) {
         super(scope, id);
 
         //eventbus
-        const bus = new EventBus(this, 'tr_EventBus', {
-            eventBusName: 'tr_EventBus'
+        const bus = new EventBus(this, 'tr_VGTEventBus', {
+            eventBusName: 'tr_VGTEventBus'
         });
     
         const sendOrderRule = new Rule(this, 'tr_SendOrderRule', {
             eventBus: bus,
             enabled: true,
-            description: 'When ReviewOrder microservice sends the trade',
+            description: 'When ReviewOrder microservice sends the order',
             eventPattern: {
-                source: ['com.tr.reviewOrder.sendOrder'],
+                source: ['com.vgt.reviewOrder.sendOrder'],
                 detailType: ['tr_SendOrder']
             },
             ruleName: 'tr_SendOrderRule'
@@ -33,7 +33,7 @@ export class TEventBus extends Construct {
         // // need to pass target to Ordering Lambda service
         // sendOrderRule.addTarget(new LambdaFunction(props.targetFuntion)); 
 
-        // need to pass target to trade queue 
+        // need to pass target to order queue 
         sendOrderRule.addTarget(new SqsQueue(props.targetQueue));
         
         // Grant permission for the reviewOrderApi to publish to this event bus

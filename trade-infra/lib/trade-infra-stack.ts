@@ -15,54 +15,109 @@ import { LambdaRestApi, DomainName } from "aws-cdk-lib/aws-apigateway";
 // Refactor ?
 // Other APIs
 
+const SYS_LEVEL = 'eng'
+
 export class TradeInfraStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    //  SYMBOL Microservice
+    // #region PETS Microservice
     // Create DDB table to store the tasks.
-    const instrumentTable = new ddb.Table(this, "tr_Instrument_Table", {
+    const petsTable = new ddb.Table(this, "tr_Pets_Table", {
+      partitionKey: { name: "id", type: ddb.AttributeType.STRING },
+      billingMode: ddb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: RemovalPolicy.DESTROY,
+    //   timeToLiveAttribute: "ttl",
+    });
+
+    // Create Lambda function for the API.
+    const petsLambda = new lambda.Function(this, "tr_Pets_Lambda", {
+      runtime: lambda.Runtime.PYTHON_3_8,
+      code: lambda.Code.fromAsset("../api/pets_lambda.zip"),
+      handler: "pets.handler",
+      environment: {
+        PETS_TABLE_NAME: petsTable.tableName,
+        POWERTOOLS_METRICS_NAMESPACE: "ref-trade-platform",
+        POWERTOOLS_SERVICE_NAME: "pets-service",
+        SYS_LEVEL: SYS_LEVEL
+      },
+    });
+
+    petsTable.grantReadWriteData(petsLambda);
+
+    // Set up API Gateway
+    const petsAPI = new LambdaRestApi(this, 'tr_Pets_API', {
+      restApiName: 'tr_Pets_API',
+      handler: petsLambda,
+      proxy: true,
+      deployOptions: {
+          // 👇 stage name `dev`
+          stageName: SYS_LEVEL,
+      }
+    });     
+    //#endregion
+
+    // #region INSTRUMENTS Microservice
+    // Create DDB table to store the tasks.
+    const instrumentsTable = new ddb.Table(this, "tr_Instruments_Table", {
       partitionKey: { name: "ticker", type: ddb.AttributeType.STRING },
       billingMode: ddb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
     //   timeToLiveAttribute: "ttl",
     });
 
-    // // Add GSI based on sector.
-    instrumentTable.addGlobalSecondaryIndex({
-      indexName: "sector-index",
+    // Add GSI based on sector
+    const instrument_sector_index = "sector-index";
+    instrumentsTable.addGlobalSecondaryIndex({
+      indexName: instrument_sector_index,
       partitionKey: { name: "sector", type: ddb.AttributeType.STRING },
     //   sortKey: { name: "created_time", type: ddb.AttributeType.NUMBER },
     });
 
     // Create Lambda function for the API.
-    const instrumentLambda = new lambda.Function(this, "tr_Instrument_Lambda", {
+    const instrumentsLambda = new lambda.Function(this, "tr_Instruments_Lambda", {
       runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset("../api/instrument_lambda.zip"),
-      handler: "instrument.handler",
+      code: lambda.Code.fromAsset("../api/instruments_lambda.zip"),
+      handler: "instruments.handler",
       environment: {
-        INSTRUMENT_TABLE_NAME: instrumentTable.tableName,
+        POWERTOOLS_METRICS_NAMESPACE: "ref-trade-platform",
+        POWERTOOLS_SERVICE_NAME: "instruments-service",
+        SYS_LEVEL: SYS_LEVEL,
+        INSTRUMENTS_TABLE_NAME: instrumentsTable.tableName,
+        INSTRUMENTS_SECTOR_INDEX: instrument_sector_index
       },
     });
 
     // Create a URL so we can access the function.
-    const instrumentFunctionUrl = instrumentLambda.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.NONE,
-      cors: {
-        allowedOrigins: ["*"],
-        allowedMethods: [lambda.HttpMethod.ALL],
-        allowedHeaders: ["*"],
-      },
-    });
+    // const instrumentFunctionUrl = instrumentLambda.addFunctionUrl({
+    //   authType: lambda.FunctionUrlAuthType.NONE,
+    //   cors: {
+    //     allowedOrigins: ["*"],
+    //     allowedMethods: [lambda.HttpMethod.ALL],
+    //     allowedHeaders: ["*"],
+    //   },
+    // });
 
-    // Output the API function url.
-    new CfnOutput(this, "InstrumentAPIUrl", {
-      value: instrumentFunctionUrl.url,
-    });
+    // // Output the API function url.
+    // new CfnOutput(this, "InstrumentAPIUrl", {
+    //   value: instrumentFunctionUrl.url,
+    // });
 
-    instrumentTable.grantReadWriteData(instrumentLambda);
+    instrumentsTable.grantReadWriteData(instrumentsLambda);
 
-    //#region - USERACCOUNTS Microservice
+    // Set up API Gateway
+    const instrumentsAPI = new LambdaRestApi(this, 'tr_Instruments_API', {
+      restApiName: 'tr_Instruments_API',
+      handler: instrumentsLambda,
+      proxy: true,
+      deployOptions: {
+          // 👇 stage name `dev`
+          stageName: SYS_LEVEL,
+      }
+    });    
+    //#endregion
+
+    // #region - USERACCOUNTS Microservice
     // Create DDB table to store users, accounts and holdings
     const userAccountsTable = new ddb.Table(this, "tr_UserAccounts_Table", {
       partitionKey: { name: "PK", type: ddb.AttributeType.STRING },
@@ -87,7 +142,8 @@ export class TradeInfraStack extends Stack {
       handler: "userAccounts.handler",
       environment: {
         USERACCOUNTS_TABLE_NAME: userAccountsTable.tableName,
-        USERACCOUNTS_TABLE_INDEX: USERACCOUNTS_TABLE_INDEX
+        USERACCOUNTS_TABLE_INDEX: USERACCOUNTS_TABLE_INDEX,
+        SYS_LEVEL: SYS_LEVEL
       },
     });
 
@@ -100,13 +156,13 @@ export class TradeInfraStack extends Stack {
       proxy: false,
       deployOptions: {
           // 👇 stage name `dev`
-          stageName: 'eng',
+          stageName: SYS_LEVEL,
       }
     });     
 
-    // #region /userProfile API
+    // #region /user API
 
-    // Set up resource /userProfile 
+    // Set up resource /user
     const userProfile = userAccountsAPI.root.addResource('user');
       
     // GET /userProfile    - get all users
@@ -197,7 +253,7 @@ export class TradeInfraStack extends Stack {
 
     //#endregion
 
-    //  REVIEWORDER Microservice
+    // #region  REVIEWORDER Microservice
     // Create DDB table to store the tasks.
     const reviewOrderTable = new ddb.Table(this, "tr_ReviewOrder_Table", {
       partitionKey: { name: "userName", type: ddb.AttributeType.STRING },
@@ -218,7 +274,8 @@ export class TradeInfraStack extends Stack {
         PRIMARY_KEY: 'userName',
         EVENT_SOURCE: "com.tr.reviewOrder.sendOrder",
         EVENT_DETAILTYPE: "tr_SendOrder",
-        EVENT_BUSNAME: "tr_EventBus"
+        EVENT_BUSNAME: "tr_EventBus",
+        SYS_LEVEL: SYS_LEVEL
       },
     });
 
@@ -238,8 +295,9 @@ export class TradeInfraStack extends Stack {
     });
 
     reviewOrderTable.grantReadWriteData(reviewOrderLambda);
+    // #endregion
 
-    //  Trading Microservice
+    // #region Trading Microservice
     // Create DDB table to to process orders.
     const tradingTable = new ddb.Table(this, "tr_Trading_Table", {
       partitionKey: { name: "accountId", type: ddb.AttributeType.STRING },
@@ -264,6 +322,7 @@ export class TradeInfraStack extends Stack {
       handler: "trading.handler",
       environment: {
         TRADING_TABLE_NAME: tradingTable.tableName,
+        SYS_LEVEL: SYS_LEVEL
       },
     });
 
@@ -285,18 +344,6 @@ export class TradeInfraStack extends Stack {
 
     tradingTable.grantReadWriteData(tradingLambda);
 
-    // Create a queue to consume from the Event Bus
-    const queue = new TQueue(this, 'tr_TradeQueue', {
-      consumer: tradingLambda,
-    });
-
-    //  Create an Event Bus
-    const eventbus = new TEventBus(this, 'tr_EventBus', {
-      publisherFuntion: reviewOrderLambda,
-      // publisherFuntion: microservices.reviewOrderMicroservice,
-      targetQueue: queue.tradeQueue   
-    });   
-
     // Set up API Gateway
     const tradingApi = new LambdaRestApi(this, 'tr_Trading_API', {
       restApiName: 'tr_Trading_API',
@@ -304,7 +351,7 @@ export class TradeInfraStack extends Stack {
       proxy: false,
       deployOptions: {
           // 👇 stage name `dev`
-          stageName: 'eng',
+          stageName: SYS_LEVEL,
       }
     });
 
@@ -330,6 +377,23 @@ export class TradeInfraStack extends Stack {
     // const allTradesRes = alltrades.addResource('{accountId}');
     // allTradesRes.addMethod('GET');  // GET /trade/{accountId}
     
+    //#endregion
+
+    //#region QUEUE AND EVENTBUS
+
+    // Create a queue to consume from the Event Bus
+    const queue = new TQueue(this, 'tr_TradeQueue', {
+      consumer: tradingLambda,
+    });
+
+    //  Create an Event Bus
+    const eventbus = new TEventBus(this, 'tr_EventBus', {
+      publisherFuntion: reviewOrderLambda,
+      // publisherFuntion: microservices.reviewOrderMicroservice,
+      targetQueue: queue.tradeQueue   
+    });   
+    //#endregion
+
   }
 
 }

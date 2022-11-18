@@ -1,12 +1,14 @@
 #!/bin/bash
 
+# ReviewOrder Lambda deploy
+
 # Exit if any command fails
 set -eux pipefail
 
 # Package lambda
-cd ../app
-./package_fastapi_lambda.sh
+cd ../api
+./package_for_pets.sh
 
 # Deploy infrastructure and lambda changes
-cd ../infra
+cd ../trade-infra
 cdk deploy

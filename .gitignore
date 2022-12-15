@@ -4,3 +4,4 @@ api/lib
 venv/
 .config
 README-sensitive.md
+**/.DS_Store

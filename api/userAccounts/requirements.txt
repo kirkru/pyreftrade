@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+mangum
+boto3
+aws-lambda-powertools
+aws-xray-sdk

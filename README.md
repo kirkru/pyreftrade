@@ -19,7 +19,9 @@ https://github.com/tiangolo/fastapi/issues/2787
 
 https://www.eliasbrange.dev/posts/observability-with-fastapi-aws-lambda-powertools/
 
+# Access context and event info using FastAPI
 https://github.com/jordaneremieff/mangum/issues/64
+
 https://github.com/awslabs/aws-lambda-powertools-python/issues/161
 
 # UI

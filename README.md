@@ -15,13 +15,28 @@
 - API Docs export
 - DynamoDB Transactions
 
+# FastAPI 
 https://github.com/tiangolo/fastapi/issues/2787
 
-https://www.eliasbrange.dev/posts/observability-with-fastapi-aws-lambda-powertools/
+A quick note for anyone who is fresh to deploying FastAPI via AWS API Gateways as a Proxy resource - you must format your response in the following manner:
 
-# Access context and event info using FastAPI
+    msg = useful_function(accept_arguments)
+    headers = { # example headers
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+    }
+    return {
+    'statusCode': 200,
+    'headers': headers,
+    'body': json.dumps(msg)
+    }
+Otherwise, you can have all sorts of fun dealing with CORS errors having otherwise correctly configured everything else within FastAPI and AWS.
+
+## Access context and event info using FastAPI
 https://github.com/jordaneremieff/mangum/issues/64
 
+## Lambda Powertools
+https://www.eliasbrange.dev/posts/observability-with-fastapi-aws-lambda-powertools/
 https://github.com/awslabs/aws-lambda-powertools-python/issues/161
 
 # UI

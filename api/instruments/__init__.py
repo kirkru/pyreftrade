@@ -41,6 +41,7 @@ app.add_middleware(ExceptionMiddleware, handlers=app.exception_handlers)
 
 handler = Mangum(app)
 
+#region Setup Op-excellence methods Tracing, Logging and Metrics, Correlation and Exception
 # Add tracing
 handler.__name__ = "handler"  # tracer requires __name__ to be set
 handler = tracer.capture_lambda_handler(handler)
@@ -76,11 +77,11 @@ async def unhandled_exception_handler(request, err):
     metrics.add_metric(name="UnhandledExceptions", unit=MetricUnit.Count, value=1)
     return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
+#endregion
 
 @app.get("/")
 def get_root():
     return {"message": "Root of Instruments API"}
-
 
 @app.get("/instruments", response_model=models.InstrumentListResponse)
 def list_instruments(next_token: str = None):
@@ -92,7 +93,7 @@ def get_instrument(ticker: str):
     try:
         return dynamo.get_instrument(ticker)
     except dynamo.InstrumentNotFoundError:
-        raise HTTPException(status_code=404, detail="Instrument: {ticker} not found")
+        raise HTTPException(status_code=404, detail=f"Instrument: {ticker} not found")
 
 @app.post("/instruments", status_code=201, response_model=models.InstrumentResponse)
 # @metrics.log_metrics
@@ -106,7 +107,7 @@ def update_instrument(ticker, payload: models.UpdateInstrument):
     try:
         return dynamo.update_instrument(ticker, payload)
     except dynamo.InstrumentNotFoundError:
-        raise HTTPException(status_code=404, detail="Pet not found")
+        raise HTTPException(status_code=404, detail="Instrument not found")
 
 @app.get("/instruments/sectors/")
 def get_sectors():
@@ -120,11 +121,11 @@ def get_sectors():
 # @app.get("/instruments/sectors/{sector}", response_model=models.InstrumentListResponse)
 def list_instruments_in_sector(sector: str, next_token: str = None):
     # List the top N instruments from the table, using the sector index.
-    logger.info("In the listing functin")
+    logger.info("In the listing function")
     try:
         return dynamo.list_instruments_in_sector(sector, next_token)
     except dynamo.InstrumentNotFoundError:
-        raise HTTPException(status_code=404, detail="No Instruments found in Sector {sector}")
+        raise HTTPException(status_code=404, detail=f"No Instruments found in Sector {sector}")
 
 
 @app.delete("/instruments/{ticker}", status_code=204)
@@ -132,7 +133,7 @@ def delete_instrument(ticker: str):
     try:
         dynamo.delete_instrument(ticker)
     except dynamo.InstrumentNotFoundError:
-        raise HTTPException(status_code=404, detail="Instrument: {ticker} not found")
+        raise HTTPException(status_code=404, detail=f"Instrument: {ticker} not found")
 
 
 @app.get("/fail")

@@ -1,5 +1,0 @@
-fastapi
-uvicorn
-mangum
-boto3
-'pyjwt[crypto]'

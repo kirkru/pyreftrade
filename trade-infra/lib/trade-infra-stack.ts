@@ -21,42 +21,6 @@ export class TradeInfraStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // #region PETS Microservice
-    // Create DDB table to store the tasks.
-    const petsTable = new ddb.Table(this, "tr_Pets_Table", {
-      partitionKey: { name: "id", type: ddb.AttributeType.STRING },
-      billingMode: ddb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.DESTROY,
-    //   timeToLiveAttribute: "ttl",
-    });
-
-    // Create Lambda function for the API.
-    const petsLambda = new lambda.Function(this, "tr_Pets_Lambda", {
-      runtime: lambda.Runtime.PYTHON_3_8,
-      code: lambda.Code.fromAsset("../api/pets_lambda.zip"),
-      handler: "pets.handler",
-      environment: {
-        PETS_TABLE_NAME: petsTable.tableName,
-        POWERTOOLS_METRICS_NAMESPACE: "ref-trade-platform",
-        POWERTOOLS_SERVICE_NAME: "pets-service",
-        SYS_LEVEL: SYS_LEVEL
-      },
-    });
-
-    petsTable.grantReadWriteData(petsLambda);
-
-    // Set up API Gateway
-    const petsAPI = new LambdaRestApi(this, 'tr_Pets_API', {
-      restApiName: 'tr_Pets_API',
-      handler: petsLambda,
-      proxy: true,
-      deployOptions: {
-          // 👇 stage name `dev`
-          stageName: SYS_LEVEL,
-      }
-    });     
-    //#endregion
-
     // #region INSTRUMENTS Microservice
     // Create DDB table to store the tasks.
     const instrumentsTable = new ddb.Table(this, "tr_Instruments_Table", {
@@ -117,7 +81,7 @@ export class TradeInfraStack extends Stack {
     });    
     //#endregion
 
-    // #region - USERACCOUNTS Microservice
+    // #region USERACCOUNTS Microservice
     // Create DDB table to store users, accounts and holdings
     const userAccountsTable = new ddb.Table(this, "tr_UserAccounts_Table", {
       partitionKey: { name: "PK", type: ddb.AttributeType.STRING },
@@ -143,7 +107,9 @@ export class TradeInfraStack extends Stack {
       environment: {
         USERACCOUNTS_TABLE_NAME: userAccountsTable.tableName,
         USERACCOUNTS_TABLE_INDEX: USERACCOUNTS_TABLE_INDEX,
-        SYS_LEVEL: SYS_LEVEL
+        SYS_LEVEL: SYS_LEVEL,
+        POWERTOOLS_METRICS_NAMESPACE: "ref-trade-platform",
+        POWERTOOLS_SERVICE_NAME: "userAccounts-service"
       },
     });
 
@@ -153,13 +119,14 @@ export class TradeInfraStack extends Stack {
     const userAccountsAPI = new LambdaRestApi(this, 'tr_UserAccounts_API', {
       restApiName: 'tr_UserAccounts_API',
       handler: userAccountsLambda,
-      proxy: false,
+      proxy: true,
       deployOptions: {
           // 👇 stage name `dev`
           stageName: SYS_LEVEL,
       }
     });     
 
+    /*
     // #region /user API
 
     // Set up resource /user
@@ -251,9 +218,11 @@ export class TradeInfraStack extends Stack {
 
     //#endregion
 
+    */
+
     //#endregion
 
-    // #region  REVIEWORDER Microservice
+    // #region REVIEWORDER Microservice
     // Create DDB table to store the tasks.
     const reviewOrderTable = new ddb.Table(this, "tr_ReviewOrder_Table", {
       partitionKey: { name: "userName", type: ddb.AttributeType.STRING },
@@ -270,31 +239,45 @@ export class TradeInfraStack extends Stack {
       code: lambda.Code.fromAsset("../api/reviewOrder_lambda.zip"),
       handler: "reviewOrder.handler",
       environment: {
-        REVIEWORDER_TABLE_NAME: reviewOrderTable.tableName,
+        POWERTOOLS_METRICS_NAMESPACE: "ref-trade-platform",
+        POWERTOOLS_SERVICE_NAME: "reviewOrder-service",
         PRIMARY_KEY: 'userName',
         EVENT_SOURCE: "com.tr.reviewOrder.sendOrder",
         EVENT_DETAILTYPE: "tr_SendOrder",
         EVENT_BUSNAME: "tr_EventBus",
-        SYS_LEVEL: SYS_LEVEL
+        SYS_LEVEL: SYS_LEVEL,
+        REVIEWORDER_TABLE_NAME: reviewOrderTable.tableName
       },
     });
 
-    // Create a URL so we can access the function.
-    const reviewOrderFunctionUrl = reviewOrderLambda.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.NONE,
-      cors: {
-        allowedOrigins: ["*"],
-        allowedMethods: [lambda.HttpMethod.ALL],
-        allowedHeaders: ["*"],
-      },
-    });
+    // // Create a URL so we can access the function.
+    // const reviewOrderFunctionUrl = reviewOrderLambda.addFunctionUrl({
+    //   authType: lambda.FunctionUrlAuthType.NONE,
+    //   cors: {
+    //     allowedOrigins: ["*"],
+    //     allowedMethods: [lambda.HttpMethod.ALL],
+    //     allowedHeaders: ["*"],
+    //   },
+    // });
 
-    // Output the API function url.
-    new CfnOutput(this, "ReviewOrderAPIUrl", {
-      value: reviewOrderFunctionUrl.url,
-    });
+    // // Output the API function url.
+    // new CfnOutput(this, "ReviewOrderAPIUrl", {
+    //   value: reviewOrderFunctionUrl.url,
+    // });
 
     reviewOrderTable.grantReadWriteData(reviewOrderLambda);
+
+    // Set up API Gateway
+    const reviewOrderAPI = new LambdaRestApi(this, 'tr_ReviewOrder_API', {
+      restApiName: 'tr_ReviewOrder_API',
+      handler: reviewOrderLambda,
+      proxy: true,
+      deployOptions: {
+          // 👇 stage name `dev`
+          stageName: SYS_LEVEL,
+      }
+    });  
+
     // #endregion
 
     // #region Trading Microservice
@@ -322,7 +305,9 @@ export class TradeInfraStack extends Stack {
       handler: "trading.handler",
       environment: {
         TRADING_TABLE_NAME: tradingTable.tableName,
-        SYS_LEVEL: SYS_LEVEL
+        SYS_LEVEL: SYS_LEVEL,
+        POWERTOOLS_METRICS_NAMESPACE: "ref-trade-platform",
+        POWERTOOLS_SERVICE_NAME: "trading-service"
       },
     });
 
@@ -348,13 +333,14 @@ export class TradeInfraStack extends Stack {
     const tradingApi = new LambdaRestApi(this, 'tr_Trading_API', {
       restApiName: 'tr_Trading_API',
       handler: tradingLambda,
-      proxy: false,
+      proxy: true,
       deployOptions: {
           // 👇 stage name `dev`
           stageName: SYS_LEVEL,
       }
     });
-
+  
+    /*
     // Set up /trade resource
     const trade = tradingApi.root.addResource('trade');
     // GET /trade?accountID=acc# // defaults to trades since yesterday
@@ -377,6 +363,7 @@ export class TradeInfraStack extends Stack {
     // const allTradesRes = alltrades.addResource('{accountId}');
     // allTradesRes.addMethod('GET');  // GET /trade/{accountId}
     
+    */
     //#endregion
 
     //#region QUEUE AND EVENTBUS

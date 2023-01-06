@@ -1,6 +1,7 @@
 **/*.pyc
 **/*.zip
 api/lib
+api/*-lib
 venv/
 .config
 README-sensitive.md

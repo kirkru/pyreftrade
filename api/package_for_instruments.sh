@@ -5,6 +5,7 @@ set -eux pipefail
 
 # Clean previous zip
 rm -rf instruments_lambda.zip
+rm -rf instruments-lib
 
 pip install -t instruments-lib -r instruments/requirements.txt
 (cd instruments-lib; zip ../instruments_lambda.zip -r .)

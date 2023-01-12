@@ -16,9 +16,11 @@ class Error(Exception):
     pass
 
 class InstrumentNotFoundError(Error):
+    logger.info(Error)
     pass
 
 class SectorNotFoundError(Error):
+    logger.info(Error)
     pass
 
 @tracer.capture_method
@@ -197,6 +199,8 @@ def delete_instrument(ticker: str):
         )
     except table.meta.client.exceptions.ConditionalCheckFailedException:
         raise InstrumentNotFoundError
+    
+    return {"deleted_instrument": ticker}
 
 def _encode(data: dict) -> str:
     json_string = json.dumps(data)

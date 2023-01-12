@@ -1,30 +1,30 @@
 from pydantic import BaseModel
 from typing import Optional
-from typing import List
+from typing import List, Any
 
-class InstrumentRequest(BaseModel):
-    ticker: str
-    company: Optional[str]
-    sector: Optional[str]
-    description: Optional[str]
-    # current_price: Optional[float] = 10.10
-    type: Optional[str] = 'stock'
+class OrderItem(BaseModel):
+    quantity: float
+    price: float
+    instrumentId: str
+    instrumentName: str
 
-class UpdateInstrument(BaseModel):
-    company: Optional[str]
-    sector: Optional[str]
-    description: Optional[str]
-    type: Optional[str] = 'stock'
+    @staticmethod
+    def from_dict(obj: Any) -> 'OrderItem':
+        # obj = ast.literal_eval(obj)
+        print("Object passed: ", obj)
+        obj = eval(obj)
+        _quantity = float(obj.get("quantity"))
+        _price = float(obj.get("price"))
+        _instrumentId = str(obj.get("instrumentId"))
+        _instrumentName = str(obj.get("instrumentName"))
+        return OrderItem(_quantity, _price, _instrumentId, _instrumentName)
 
-class InstrumentResponse(BaseModel):
-    ticker: str
-    created_time: str
-    company: str
-    sector: str
-    description: str
-    # current_price: Optional[float] = 10.10
-    type: Optional[str]
-
-class InstrumentListResponse(BaseModel):
-    Instruments: Optional[List[InstrumentResponse]]
-    next_token: Optional[str] = None
+class TradeRequest(BaseModel):
+    accountId: str
+    tradeId: Optional[str]
+    tradeProcessedTime: Optional[str]
+    userName: str
+    reviewOrderTime: str
+    reviewOrderId: str
+    totalPrice: Optional[float]
+    tradeItems: List[OrderItem]

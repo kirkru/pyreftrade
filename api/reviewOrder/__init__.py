@@ -104,136 +104,42 @@ def get_reviewOrder(userName: str):
   except dynamo.ReviewOrderNotFoundError:
     raise HTTPException(status_code=404, detail=f"No ReviewOrders found for user {userName}")
 
+@app.delete("/delete-reviewOrder/{userName}")
+def delete_reviewOrder(userName: str):
+  try:
+    dynamo.delete_reviewOrder(userName)
+  except dynamo.ReviewOrderNotFoundError:
+    raise HTTPException(status_code=404, detail=f"Review Order for user: {userName} not found")
 
-# @app.delete("/delete-reviewOrder/{userName}")
-# async def delete_reviewOrder(userName: str):
-#     # Delete the reviewOrder for the user from the table.
-#     table = _get_table()
+@app.put("/sendOrder/{userName}")
+def sendOrder(userName: str):
+  # TODO - Add try catch
 
-#     try:
-#       # response = table.delete_item(Key={"userName": userName})
-#       # Delete only if item found for user using ConditionalExpression
-#       response = table.delete_item(Key={"userName": userName}, ConditionExpression="attribute_exists(userName)")
-#       print (response)
-#       print (type(response))
-#     except Exception as e :
-#       print ("An exception occured")
-#       print(e)
-#       # raise HTTPException(status_code=404, detail=f"ReviewOrder for User: {userName} not found")
+  logger.info("1 - Getting existing reviewOrder with items")
 
-#     return {"deleted_userName_reviewOrder": userName}
+  reviewOrder = dynamo.get_reviewOrder(userName)
 
-# @app.put("/sendOrder/{userName}")
-# async def sendOrder(userName: str):
-#   print("1 - Getting existing reviewOrder with items")
+  print("Review Order: ", reviewOrder)
 
-#   reviewOrder = await get_reviewOrder(userName)
+  logger.info("2 - create an event json object with reviewOrder items")
 
-#   print("Review Order: ", reviewOrder)
+  # reviewOrderRequest = ReviewOrderRequest.from_dict(reviewOrder)
+  # orderPayload, totalPrice = prepareOrderPayload(reviewOrder)
+  orderPayload = dynamo.prepareOrderPayload(reviewOrder)
 
-#   print("2 - create an event json object with reviewOrder items")
+  print(orderPayload)
 
-#   # reviewOrderRequest = ReviewOrderRequest.from_dict(reviewOrder)
-#   # orderPayload, totalPrice = prepareOrderPayload(reviewOrder)
-#   orderPayload = prepareOrderPayload(reviewOrder)
+  # print(totalPrice)
 
-#   print (orderPayload)
+  logger.info("3 - publish an event to EventBridge")
+  publishedEvent = dynamo.publishSendOrderEvent(orderPayload)
 
-#   # print(totalPrice)
+  # TODO - update delete reviewOrder with accountID
 
-#   print("3 - publish an event to EventBridge")
-#   publishedEvent = await publishSendOrderEvent(orderPayload)
+  logger.info("4 - remove existing reviewOrder")
+  dynamo.delete_reviewOrder(userName)
 
-#   # TODO - upon successfully publishing, delete reviewOrder
-#   # TODO - update delete reviewOrder with accountID
-
-#   print("4 - remove existing reviewOrder")
-#   await delete_reviewOrder(userName)
-
-#   return {"Success":"Sent order to the event bus"}
-
-# def prepareOrderPayload(reviewOrder):
-#   print("prepareOrderPayload")
-
-#   try:
-#     totalPrice = Decimal('0.0')
-#     #  Convert to Object
-#     objReviewOrder = DictObj(reviewOrder)
-
-#     # Calculate total price
-#     for orderItem in objReviewOrder.orderItems:
-#       totalPrice = totalPrice + (orderItem.quantity * orderItem.price)
-
-#     print(totalPrice)
-
-#     totalPriceDict = {'totalPrice': totalPrice}
-#     reviewOrder.update(totalPriceDict)
-
-#     setattr(objReviewOrder, "totalPrice" , totalPrice)
-
-#     # reviewOrder.totalPrice = totalPrice
-
-#     # copy all properties from reviewOrder into checkoutRequest
-
-#     # orderPayload.__dict__ = reviewOrder.__dict__.copy() 
-#     # return reviewOrder, totalPrice
-#     # return objReviewOrder.__dict__
-#     return reviewOrder
-
-#   except Exception as e:
-#       print ("An exception occured")
-#       print(e)
-#       # print(traceback.format_exc())
-
-#   '''
-#     console.log("sendOrder");
-
-#   // expected request payload : { userName : vgt, attributes[firstName, lastName, email ..] 
-#   const checkoutRequest = JSON.parse(event.body);
-#   if (checkoutRequest == null || checkoutRequest.userName == null) {
-#     throw new Error(`userName should exist in checkoutRequest: "${checkoutRequest}"`);
-#   }  
-  
-#   // 1- Get existing reviewOrder with items
-#   const reviewOrder = await getReviewOrder(checkoutRequest.userName);
-
-#   // 2- create an event json object with reviewOrder items, 
-#     // calculate totalprice, prepare order create json data to send ordering ms 
-#   var checkoutPayload = prepareOrderPayload(checkoutRequest, reviewOrder);
-
-#   // 3- publish an event to eventbridge - this will subscribe by order microservice and start ordering process.
-#   const publishedEvent = await publishSendOrderEvent(checkoutPayload);
-
-#   // 4- remove existing reviewOrder
-#   await deleteReviewOrder(checkoutRequest.userName);
-#   '''
-
-# async def publishSendOrderEvent(orderPayload):
-#   print("Publishing the sendOrder event with: ", orderPayload)
-#   # dictOrderPayload = orderPayload.__dict__
-#   try:
-#     print("Before params")
-
-#     eventBusParams = {
-#                 'Source':os.environ.get("EVENT_SOURCE"),
-#                 'DetailType':os.environ.get("EVENT_DETAILTYPE"),
-#                 'Detail':json.dumps(orderPayload, indent=4, cls=DecimalEncoder),
-#                 # 'Detail':json.dumps(orderPayload),
-#                 'EventBusName':os.environ.get("EVENT_BUSNAME")
-#             }
-
-#     print("After params")
-
-#     client = boto3.client('events')
-
-#     response = client.put_events(
-#         Entries=[eventBusParams]
-#     )
-#     print("Sucess: Event Sent. Got response: {}", response)
-#     return response
-#   except Exception as e:
-#     print("Exception occured", e)
-#     raise HTTPException(status_code=500, detail=f"Exception occured while publishing order event")
+  return {"Success": "Sent order to the event bus"}
 
 @app.get("/fail")
 def fail():
